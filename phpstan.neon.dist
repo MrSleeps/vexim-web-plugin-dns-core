@@ -1,0 +1,14 @@
+includes:
+    - ./vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 4
+    paths:
+        - src
+        - config
+        - database
+    tmpDir: build/phpstan
+    bootstrapFiles:
+        - vendor/autoload.php
+    ignoreErrors:
+        - '#Call to static method (components|onSave)\(\) on an unknown class VEximUI\\VEximPdns\\Filament\\DomainFormExtension#'
