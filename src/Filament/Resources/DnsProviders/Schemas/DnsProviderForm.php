@@ -155,10 +155,7 @@ class DnsProviderForm
                                     ]),
                             ];
                         }
-
-                        // Return the provider's custom settings schema without the action button
-                        // (Test connection can be added as a separate button in the resource)
-                  
+  
                         return [
                             Section::make($providerClass::getName() . ' Settings')
                                 ->description($providerClass::getDescription())
