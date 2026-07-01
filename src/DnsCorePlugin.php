@@ -22,7 +22,8 @@ class DnsCorePlugin implements Plugin
     {
         $panel->resources([
             DnsProviderResource::class,
-        ]);
+        ]);        
+        
     }
 
     public function boot(Panel $panel): void {}

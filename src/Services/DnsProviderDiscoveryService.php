@@ -21,8 +21,6 @@ class DnsProviderDiscoveryService
     {
         $this->providers = collect();
         
-        // Don't auto-discover in constructor - wait until service provider booted
-        Log::debug('DnsProviderDiscoveryService constructed');
     }
     
     /**
@@ -45,10 +43,6 @@ class DnsProviderDiscoveryService
         // Load from config
         $this->loadFromConfig();
         
-        Log::info('DnsProviderDiscoveryService booted', [
-            'total_providers' => $this->providers->count(),
-            'providers' => $this->getProviderOptions()
-        ]);
     }
     
     /**
@@ -99,7 +93,6 @@ class DnsProviderDiscoveryService
                 'registered_at' => now(),
             ];
             
-            Log::info("DNS Provider registered: {$type} - {$providerClass::getName()}");
         }
     }
 

@@ -72,11 +72,18 @@ class DnsCoreServiceProvider extends ServiceProvider
         if (!class_exists(\App\Events\DkimKeyGenerated::class)) {
             return;
         }
-
+/*
         Event::listen(
             \App\Events\DkimKeyGenerated::class,
             [Listeners\HandleDkimForDns::class, 'handle']
         );
+        
+        
+        Event::listen(
+            \App\Events\DmarcKeyGenerated::class,
+            [Listeners\HandleDmarcForDns::class, 'handle']
+        );       
+        */
 
         if (class_exists(Events\DnsRecordRequired::class)) {
             Event::listen(
