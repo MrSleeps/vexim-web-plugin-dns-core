@@ -25,7 +25,7 @@ class DnsProviderResource extends Resource
     
     protected static ?string $slug = 'dns-providers';
     
-    protected static string|UnitEnum|null $navigationGroup = 'DNS Management';
+    protected static string|UnitEnum|null $navigationGroup = 'DNS';
     
     protected static ?string $navigationLabel = 'Providers';
     
