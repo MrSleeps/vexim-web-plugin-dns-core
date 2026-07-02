@@ -8,12 +8,15 @@ use Filament\Panel;
 use VEximweb\Plugin\DnsCore\Services\DnsProviderDiscoveryService;
 use VEximweb\Plugin\DnsCore\Factories\DnsClientFactory;
 use VEximweb\Plugin\DnsCore\Events\RegisterDnsClients;
+use VEximweb\Plugin\DnsCore\Commands\SyncDomainsToDnsProvider;
 
 class DnsCoreServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/dns.php', 'dns');
+        
+        $this->commands($this->getCommands());
 
         $this->app->singleton(DnsProviderDiscoveryService::class, function ($app) {
             return new DnsProviderDiscoveryService();
@@ -80,4 +83,14 @@ class DnsCoreServiceProvider extends ServiceProvider
             );
         }
     }
+    
+    /**
+     * @return array<class-string>
+     */
+    protected function getCommands(): array
+    {
+        return [
+            SyncDomainsToDnsProvider::class,
+        ];
+    }    
 }
