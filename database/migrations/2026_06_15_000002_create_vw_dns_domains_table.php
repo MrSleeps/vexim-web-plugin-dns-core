@@ -11,15 +11,16 @@ return new class extends Migration
         if (!Schema::hasTable('vw_dns_domains')) {
             Schema::create('vw_dns_domains', function (Blueprint $table) {
                 $table->id();
-                $table->unsignedBigInteger('domain_id');           // Links to main app's domains table
+                // Use unsignedInteger to match the domains table's int(10) unsigned
+                $table->unsignedInteger('domain_id');  // Changed from unsignedBigInteger
                 $table->foreignId('provider_id')->constrained('vw_dns_providers')->onDelete('cascade');
-                $table->string('zone_id')->nullable();             // Provider's zone/domain ID
-                $table->json('settings')->nullable();              // Per-domain settings
+                $table->string('zone_id')->nullable();
+                $table->json('settings')->nullable();
                 $table->boolean('is_active')->default(true);
                 $table->timestamp('last_sync_at')->nullable();
                 $table->timestamps();
 
-                // Foreign key to main app's domains table (note: 'domains' not 'vw_domains')
+                // Foreign key to domains table - this should work now
                 $table->foreign('domain_id')
                     ->references('domain_id')
                     ->on('domains')
