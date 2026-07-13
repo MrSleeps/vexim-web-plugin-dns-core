@@ -23,7 +23,7 @@ class HandleMtaStsForDns
         })->first();
         
         if (!$dnsDomain) {
-            \Illuminate\Support\Facades\Log::warning('No DNS domain found for DKIM event', [
+            \Illuminate\Support\Facades\Log::warning('No DNS domain found for MTASTS event', [
                 'zone' => $event->zone
             ]);
             return;
