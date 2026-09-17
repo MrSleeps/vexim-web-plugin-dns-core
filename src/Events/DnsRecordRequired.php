@@ -37,7 +37,13 @@ class DnsRecordRequired
     ) {
         $this->domain = $domain;
 
-        $domainName = rtrim((string) ($domain->ownerDomain?->domain ?? $domain->domain_name), '.');
+        $ownerDomain = $domain->ownerDomain;
+        $domainName = rtrim(
+            $ownerDomain
+                ? (string) $ownerDomain->getAttribute('domain')
+                : $domain->domain_name,
+            '.',
+        );
         $zoneName = $domain->authoritativeZoneName();
 
         $this->zone = rtrim($zoneName, '.').'.';
