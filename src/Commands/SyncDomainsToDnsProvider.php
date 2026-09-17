@@ -141,12 +141,25 @@ class SyncDomainsToDnsProvider extends Command
 
                 try {
                     $resolution = $resolver->resolve($client, $domainName);
+                    $existing = DnsDomain::query()->where('domain_id', $domainId)->first();
 
                     if ($resolution->isDelegated()) {
-                        $skipped++;
-                        $this->line(
-                            "\nSkipped: {$domainName} (delegated at {$resolution->delegatedAt}; no managed child zone exists on this provider)"
-                        );
+                        if ($existing && $this->option('force')) {
+                            $existing->update([
+                                'zone_id' => null,
+                                'is_active' => false,
+                            ]);
+                            $synced++;
+                            $this->line(
+                                "\nDisabled: {$domainName} (delegated at {$resolution->delegatedAt}; no managed child zone exists on this provider)"
+                            );
+                        } else {
+                            $skipped++;
+                            $this->line(
+                                "\nSkipped: {$domainName} (delegated at {$resolution->delegatedAt}; no managed child zone exists on this provider)"
+                            );
+                        }
+
                         $bar->advance();
 
                         continue;
@@ -156,7 +169,6 @@ class SyncDomainsToDnsProvider extends Command
                     // any matching managed zone. Once a zone exists, the resolver will
                     // automatically prefer the exact or nearest authoritative parent.
                     $zoneName = $resolution->zone ?? $domainName;
-                    $existing = DnsDomain::query()->where('domain_id', $domainId)->first();
 
                     if ($existing) {
                         if ($this->option('force')) {
