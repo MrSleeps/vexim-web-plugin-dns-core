@@ -38,9 +38,9 @@ class DnsRecordRequired
         $this->domain = $domain;
 
         $domainName = rtrim((string) ($domain->ownerDomain?->domain ?? $domain->domain_name), '.');
-        $zoneName = rtrim((string) ($domain->zone_id ?: $domainName), '.');
+        $zoneName = $domain->authoritativeZoneName();
 
-        $this->zone = $zoneName.'.';
+        $this->zone = rtrim($zoneName, '.').'.';
         $this->name = $this->qualifyRecordName($name, $domainName);
         $this->type = $type;
         $this->content = $content;
