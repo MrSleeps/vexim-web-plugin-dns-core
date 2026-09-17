@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Crypt;
 use VEximweb\Core\Data\Models\User;
 use VEximweb\Plugin\DnsCore\Contracts\DnsClient;
+use VEximweb\Plugin\DnsCore\Factories\DnsClientFactory;
 
 /**
  * @property int $id
