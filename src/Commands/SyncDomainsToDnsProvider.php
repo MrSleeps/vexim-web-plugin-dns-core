@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use VEximweb\Core\Data\Models\Domain;
 use VEximweb\Plugin\DnsCore\Models\DnsDomain;
 use VEximweb\Plugin\DnsCore\Models\DnsProvider;
+use VEximweb\Plugin\DnsCore\Services\DnsZoneResolver;
 
 class SyncDomainsToDnsProvider extends Command
 {
@@ -128,25 +129,44 @@ class SyncDomainsToDnsProvider extends Command
         $skipped = 0;
         $failed = 0;
 
+        $client = $provider->getClient();
+        $resolver = new DnsZoneResolver;
+
         DB::beginTransaction();
 
         try {
             foreach ($domains as $domain) {
                 $domainId = (int) $domain->getKey();
-                $domainName = (string) $domain->getAttribute('domain');
+                $domainName = rtrim((string) $domain->getAttribute('domain'), '.');
 
                 try {
+                    $resolution = $resolver->resolve($client, $domainName);
+
+                    if ($resolution->isDelegated()) {
+                        $skipped++;
+                        $this->line(
+                            "\nSkipped: {$domainName} (delegated at {$resolution->delegatedAt}; no managed child zone exists on this provider)"
+                        );
+                        $bar->advance();
+
+                        continue;
+                    }
+
+                    // Preserve the previous behaviour for domains that do not yet have
+                    // any matching managed zone. Once a zone exists, the resolver will
+                    // automatically prefer the exact or nearest authoritative parent.
+                    $zoneName = $resolution->zone ?? $domainName;
                     $existing = DnsDomain::query()->where('domain_id', $domainId)->first();
 
                     if ($existing) {
                         if ($this->option('force')) {
                             $existing->update([
                                 'provider_id' => $provider->id,
-                                'zone_id' => $domainName,
+                                'zone_id' => $zoneName,
                                 'is_active' => true,
                             ]);
                             $synced++;
-                            $this->line("\nUpdated: {$domainName}");
+                            $this->line("\nUpdated: {$domainName} -> {$zoneName}");
                         } else {
                             $skipped++;
                             $this->line("\nSkipped: {$domainName} (already exists, use --force to overwrite)");
@@ -155,13 +175,13 @@ class SyncDomainsToDnsProvider extends Command
                         DnsDomain::query()->create([
                             'domain_id' => $domainId,
                             'provider_id' => $provider->id,
-                            'zone_id' => $domainName,
+                            'zone_id' => $zoneName,
                             'settings' => null,
                             'is_active' => true,
                             'last_sync_at' => now(),
                         ]);
                         $synced++;
-                        $this->line("\nAdded: {$domainName}");
+                        $this->line("\nAdded: {$domainName} -> {$zoneName}");
                     }
                 } catch (\Exception $e) {
                     $failed++;
@@ -181,7 +201,7 @@ class SyncDomainsToDnsProvider extends Command
             $this->info("Failed: {$failed}");
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->error('An error occurred while syncing domains: ' . $e->getMessage());
+            $this->error('An error occurred while syncing domains: '.$e->getMessage());
 
             throw $e;
         }
