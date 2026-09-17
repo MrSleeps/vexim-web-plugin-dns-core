@@ -10,5 +10,3 @@ parameters:
     tmpDir: build/phpstan
     bootstrapFiles:
         - vendor/autoload.php
-    ignoreErrors:
-        - '#Call to static method (components|onSave)\(\) on an unknown class VEximUI\\VEximPdns\\Filament\\DomainFormExtension#'

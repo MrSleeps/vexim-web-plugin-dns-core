@@ -4,8 +4,10 @@ namespace VEximweb\Plugin\DnsCore\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Crypt;
 use VEximweb\Core\Data\Models\User;
+use VEximweb\Plugin\DnsCore\Contracts\DnsClient;
 
 /**
  * @property int $id
@@ -18,18 +20,17 @@ use VEximweb\Core\Data\Models\User;
  * @property bool $is_default
  * @property bool $is_enabled
  * @property int $priority
+ * @property-read User|null $owner
  */
-
 class DnsProvider extends Model
 {
     protected $table = 'vw_dns_providers';
-    
-    
+
     protected $fillable = [
         'owner_user_id', 'name', 'type', 'api_url', 'api_key', 'settings',
-        'is_default', 'is_enabled', 'priority'
+        'is_default', 'is_enabled', 'priority',
     ];
-    
+
     protected $casts = [
         'owner_user_id' => 'integer',
         'settings' => 'array',
@@ -37,40 +38,35 @@ class DnsProvider extends Model
         'is_enabled' => 'boolean',
         'priority' => 'integer',
     ];
-    
+
     protected $hidden = ['api_key'];
-    
-    // Automatically decrypt API key when accessed
-    public function getApiKeyAttribute($value)
+
+    public function getApiKeyAttribute($value): ?string
     {
         if (empty($value)) {
             return null;
         }
-        
+
         try {
             return Crypt::decryptString($value);
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             return null;
         }
     }
-    
-    // Automatically encrypt API key when set
-    public function setApiKeyAttribute($value)
+
+    public function setApiKeyAttribute($value): void
     {
-        if (empty($value)) {
-            $this->attributes['api_key'] = null;
-        } else {
-            $this->attributes['api_key'] = Crypt::encryptString($value);
-        }
+        $this->attributes['api_key'] = empty($value)
+            ? null
+            : Crypt::encryptString($value);
     }
-    
-    // Relationships
+
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_user_id');
     }
 
-    public function domains()
+    public function domains(): HasMany
     {
         return $this->hasMany(DnsDomain::class, 'provider_id');
     }
@@ -79,36 +75,32 @@ class DnsProvider extends Model
     {
         return $this->owner_user_id === null;
     }
-    
-    // Scopes
+
     public function scopeEnabled($query)
     {
         return $query->where('is_enabled', true);
     }
-    
+
     public function scopeDefault($query)
     {
         return $query->where('is_default', true);
     }
-    
+
     public function scopeByType($query, string $type)
     {
         return $query->where('type', $type);
     }
-    
-    // Get the appropriate client for this provider
-    public function getClient(?DnsDomain $domain = null)
+
+    public function getClient(?DnsDomain $domain = null): DnsClient
     {
         return app(\VEximweb\Plugin\DnsCore\DnsClientResolver::class)->make($this, $domain);
     }
-    
-    // Test connection to provider
+
     public function testConnection(): bool
     {
         try {
-            $client = $this->getClient();
-            return $client->testConnection();
-        } catch (\Exception $e) {
+            return $this->getClient()->testConnection();
+        } catch (\Exception) {
             return false;
         }
     }

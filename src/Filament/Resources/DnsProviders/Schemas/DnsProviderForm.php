@@ -18,13 +18,11 @@ use VEximweb\Plugin\DnsCore\Services\DnsProviderDiscoveryService;
 class DnsProviderForm
 {
     protected static ?DnsProviderDiscoveryService $discoveryService = null;
-    
+
     protected static function getDiscoveryService(): DnsProviderDiscoveryService
     {
-        if (!static::$discoveryService) {
+        if (! static::$discoveryService) {
             static::$discoveryService = app(DnsProviderDiscoveryService::class);
-
-            // Ensure booted - method definitely exists
             static::$discoveryService->boot();
 
             $options = static::$discoveryService->getProviderOptions();
@@ -33,14 +31,14 @@ class DnsProviderForm
 
         return static::$discoveryService;
     }
-    
+
     public static function configure(Schema $schema): Schema
     {
         $discoveryService = static::getDiscoveryService();
         $providerOptions = $discoveryService->getProviderOptions();
-        
+
         Log::info('DnsProviderForm - Provider options for select:', ['options' => $providerOptions]);
-        
+
         return $schema
             ->components([
                 Section::make('Basic Information')
@@ -66,11 +64,11 @@ class DnsProviderForm
                                     ->searchable()
                                     ->live()
                                     ->afterStateUpdated(function ($set, $state) use ($discoveryService) {
-                                        $set('api_url',  null);
-                                        $set('api_key',  null);
+                                        $set('api_url', null);
+                                        $set('api_key', null);
                                         $set('settings', null);
 
-                                        if (!$state) {
+                                        if (! $state) {
                                             return;
                                         }
 
@@ -81,13 +79,14 @@ class DnsProviderForm
                                     })
                                     ->helperText(function ($get) use ($discoveryService) {
                                         $type = $get('type');
-                                        if (!$type) {
+                                        if (! $type) {
                                             return 'Select a provider type';
                                         }
                                         $providerClass = $discoveryService->getProvider($type);
                                         if ($providerClass && method_exists($providerClass, 'getDescription')) {
                                             return $providerClass::getDescription();
                                         }
+
                                         return 'Select a provider type';
                                     })
                                     ->placeholder(count($providerOptions) === 0 ? 'No providers available' : 'Select a provider'),
@@ -101,7 +100,11 @@ class DnsProviderForm
                                     ->placeholder('Global (system managed)')
                                     ->searchable()
                                     ->live()
-                                    ->visible(fn () => auth()->user()?->isSystemAdmin() ?? false)
+                                    ->visible(function (): bool {
+                                        $user = auth()->user();
+
+                                        return $user instanceof User && $user->isSystemAdmin();
+                                    })
                                     ->helperText('Leave blank for a global provider. Select a domain admin to make this provider private to them.')
                                     ->columnSpanFull(),
                             ]),
@@ -112,7 +115,7 @@ class DnsProviderForm
                     ->schema(function ($get) use ($discoveryService) {
                         $type = $get('type');
 
-                        if (!$type) {
+                        if (! $type) {
                             return [
                                 Section::make('Provider Settings')
                                     ->description('Select a provider type to configure its settings')
@@ -130,7 +133,7 @@ class DnsProviderForm
 
                         $providerClass = $discoveryService->getProvider($type);
 
-                        if (!$providerClass) {
+                        if (! $providerClass) {
                             return [
                                 Section::make('Provider Settings')
                                     ->description('Provider configuration')
@@ -151,7 +154,7 @@ class DnsProviderForm
                         if (empty($settingsSchema)) {
                             return [
                                 Section::make('Provider Settings')
-                                    ->description('Configuration for ' . $providerClass::getName())
+                                    ->description('Configuration for '.$providerClass::getName())
                                     ->icon('heroicon-o-cog')
                                     ->schema([
                                         TextInput::make('api_url')
@@ -162,16 +165,16 @@ class DnsProviderForm
                                             ->placeholder('https://api.example.com/v1')
                                             ->extraInputAttributes(['autocomplete' => 'off']),
 
-                                    TextInput::make('api_key')
-                                        ->label('API Key')
-                                        ->required()
-                                        ->helperText('X-API-Key for authentication'),
+                                        TextInput::make('api_key')
+                                            ->label('API Key')
+                                            ->required()
+                                            ->helperText('X-API-Key for authentication'),
                                     ]),
                             ];
                         }
-  
+
                         return [
-                            Section::make($providerClass::getName() . ' Settings')
+                            Section::make($providerClass::getName().' Settings')
                                 ->description($providerClass::getDescription())
                                 ->icon($providerClass::getIcon())
                                 ->collapsible()

@@ -1,25 +1,26 @@
 <?php
+
 namespace VEximweb\Plugin\DnsCore;
 
-use Illuminate\Support\ServiceProvider;
+use Filament\Panel;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Log;
-use Filament\Panel;
-use VEximweb\Plugin\DnsCore\Services\DnsProviderDiscoveryService;
-use VEximweb\Plugin\DnsCore\Factories\DnsClientFactory;
-use VEximweb\Plugin\DnsCore\Events\RegisterDnsClients;
+use Illuminate\Support\ServiceProvider;
 use VEximweb\Plugin\DnsCore\Commands\SyncDomainsToDnsProvider;
+use VEximweb\Plugin\DnsCore\Events\RegisterDnsClients;
+use VEximweb\Plugin\DnsCore\Factories\DnsClientFactory;
+use VEximweb\Plugin\DnsCore\Services\DnsProviderDiscoveryService;
 
 class DnsCoreServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->mergeConfigFrom(__DIR__ . '/../config/dns.php', 'dns');
-        
+        $this->mergeConfigFrom(__DIR__.'/../config/dns.php', 'dns');
+
         $this->commands($this->getCommands());
 
-        $this->app->singleton(DnsProviderDiscoveryService::class, function ($app) {
-            return new DnsProviderDiscoveryService();
+        $this->app->singleton(DnsProviderDiscoveryService::class, function () {
+            return new DnsProviderDiscoveryService;
         });
 
         Panel::configureUsing(function (Panel $panel) {
@@ -29,10 +30,10 @@ class DnsCoreServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
-        $this->app->singleton(DnsClientFactory::class, function ($app) {
-            $factory = new DnsClientFactory();
+        $this->app->singleton(DnsClientFactory::class, function () {
+            $factory = new DnsClientFactory;
 
             if (class_exists(RegisterDnsClients::class)) {
                 Event::dispatch(new RegisterDnsClients($factory));
@@ -47,23 +48,26 @@ class DnsCoreServiceProvider extends ServiceProvider
             $discoveryService = $this->app->make(DnsProviderDiscoveryService::class);
             $discoveryService->boot();
 
-            if (! class_exists(\VEximweb\Core\Domain\Filament\Resources\Schemas\DomainForm::class)) {
+            $domainFormClass = 'VEximweb\\Core\\Domain\\Filament\\Resources\\Schemas\\DomainForm';
+
+            if (! class_exists($domainFormClass)) {
                 Log::debug('DomainForm class not found, skipping extension');
+
                 return;
             }
 
-            if (! method_exists(\VEximweb\Core\Domain\Filament\Resources\Schemas\DomainForm::class, 'extend')) {
+            $extend = [$domainFormClass, 'extend'];
+
+            if (! is_callable($extend)) {
                 Log::error('DomainForm::extend() method not found');
+
                 return;
             }
 
             $extensions = $discoveryService->getFormExtensions();
 
             foreach ($extensions as $extension) {
-                \VEximweb\Core\Domain\Filament\Resources\Schemas\DomainForm::extend(
-                    components: $extension['components'],
-                    onSave: $extension['onSave'],
-                );
+                call_user_func($extend, $extension['components'], $extension['onSave']);
             }
 
             Log::info('DNS form extensions applied', ['count' => count($extensions)]);
@@ -72,18 +76,18 @@ class DnsCoreServiceProvider extends ServiceProvider
 
     protected function registerDnsEventListeners(): void
     {
-        if (!class_exists(\App\Events\DkimKeyGenerated::class)) {
+        if (! class_exists(\App\Events\DkimKeyGenerated::class)) {
             return;
         }
-        
+
         if (class_exists(Events\DnsRecordRequired::class)) {
             Event::listen(
                 Events\DnsRecordRequired::class,
-                [Listeners\RouteDnsRecordToProvider::class, 'handle']
+                [Listeners\RouteDnsRecordToProvider::class, 'handle'],
             );
         }
     }
-    
+
     /**
      * @return array<class-string>
      */
@@ -92,5 +96,5 @@ class DnsCoreServiceProvider extends ServiceProvider
         return [
             SyncDomainsToDnsProvider::class,
         ];
-    }    
+    }
 }
