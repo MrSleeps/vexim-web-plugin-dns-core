@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use LogicException;
 use VEximweb\Plugin\DnsCore\Contracts\DnsClient;
+use VEximweb\Plugin\DnsCore\Services\DnsZoneResolver;
 
 /**
  * @property int $id
@@ -77,7 +78,26 @@ class DnsDomain extends Model
 
     public function authoritativeZoneName(): string
     {
-        return rtrim((string) ($this->zone_id ?: $this->domain_name), '.');
+        if ($this->zone_id) {
+            return rtrim($this->zone_id, '.');
+        }
+
+        $domainName = rtrim($this->domain_name, '.');
+        $resolution = (new DnsZoneResolver)->resolve($this->getClient(), $domainName);
+
+        if ($resolution->isDelegated()) {
+            throw new LogicException(
+                "DNS domain {$domainName} is delegated at {$resolution->delegatedAt} and no managed child zone exists on this provider."
+            );
+        }
+
+        $zoneName = $resolution->zone ?? $domainName;
+
+        if ($resolution->isManaged() && $this->exists) {
+            $this->forceFill(['zone_id' => $zoneName])->saveQuietly();
+        }
+
+        return $zoneName;
     }
 
     public function usesSharedParentZone(): bool
@@ -96,12 +116,6 @@ class DnsDomain extends Model
 
     public function createZone(array $options = []): bool
     {
-        if ($this->usesSharedParentZone()) {
-            throw new LogicException(
-                "DNS domain {$this->domain_name} is managed inside shared parent zone {$this->authoritativeZoneName()}; refusing to create or replace that zone."
-            );
-        }
-
         $client = $this->getClient();
         $zoneName = rtrim($this->domain_name, '.');
 
