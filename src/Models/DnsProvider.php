@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Crypt;
 use VEximweb\Core\Data\Models\User;
 use VEximweb\Plugin\DnsCore\Contracts\DnsClient;
+use VEximweb\Plugin\DnsCore\Factories\DnsClientFactory;
 
 /**
  * @property int $id
@@ -93,7 +94,7 @@ class DnsProvider extends Model
 
     public function getClient(?DnsDomain $domain = null): DnsClient
     {
-        return app(\VEximweb\Plugin\DnsCore\DnsClientResolver::class)->make($this, $domain);
+        return app(DnsClientFactory::class)->make($this, $domain);
     }
 
     public function testConnection(): bool
