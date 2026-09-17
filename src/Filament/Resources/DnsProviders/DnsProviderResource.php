@@ -2,18 +2,21 @@
 
 namespace VEximweb\Plugin\DnsCore\Filament\Resources\DnsProviders;
 
+use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Tables\Table;
 use Filament\Support\Icons\Heroicon;
-use BackedEnum;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
-use VEximweb\Plugin\DnsCore\Models\DnsProvider;
-use VEximweb\Plugin\DnsCore\Filament\Resources\DnsProviders\Pages\ListDnsProviders;
+use VEximweb\Core\Data\Models\User;
 use VEximweb\Plugin\DnsCore\Filament\Resources\DnsProviders\Pages\CreateDnsProvider;
 use VEximweb\Plugin\DnsCore\Filament\Resources\DnsProviders\Pages\EditDnsProvider;
-use VEximweb\Plugin\DnsCore\Filament\Resources\DnsProviders\Tables\DnsProvidersTable;
+use VEximweb\Plugin\DnsCore\Filament\Resources\DnsProviders\Pages\ListDnsProviders;
 use VEximweb\Plugin\DnsCore\Filament\Resources\DnsProviders\Schemas\DnsProviderForm;
+use VEximweb\Plugin\DnsCore\Filament\Resources\DnsProviders\Tables\DnsProvidersTable;
+use VEximweb\Plugin\DnsCore\Models\DnsProvider;
+use VEximweb\Plugin\DnsCore\Services\DnsAccessControl;
 
 class DnsProviderResource extends Resource
 {
@@ -21,7 +24,7 @@ class DnsProviderResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 
-    protected static ?string $recordTitleAttribute = 'DnsServiceProvider';
+    protected static ?string $recordTitleAttribute = 'name';
     
     protected static ?string $slug = 'dns-providers';
     
@@ -43,17 +46,22 @@ class DnsProviderResource extends Resource
         return DnsProvidersTable::configure($table);
     }
 
+    public static function getEloquentQuery(): Builder
+    {
+        $user = auth()->user();
+
+        return DnsAccessControl::providerResourceQuery($user instanceof User ? $user : null);
+    }
+
     public static function getRelations(): array
     {
-        return [
-            //
-        ];
+        return [];
     }
     
     public static function getPanel(): string
     {
-        return 'vexim'; // Must match the panel ID above
-    }    
+        return 'vexim';
+    }
 
     public static function getPages(): array
     {
@@ -67,32 +75,37 @@ class DnsProviderResource extends Resource
     public static function shouldRegisterNavigation(): bool
     {
         $user = auth()->user();
-        return $user && ($user->isSystemAdmin() || $user->isDomainAdmin());
-    }    
+
+        return $user instanceof User && DnsAccessControl::canCreateOwnProviders($user);
+    }
     
     public static function canCreate(): bool
     {
         $user = auth()->user();
-        return $user && ($user->isSystemAdmin() || $user->isDomainAdmin());
+
+        return $user instanceof User && DnsAccessControl::canCreateOwnProviders($user);
+    }
+
+    public static function canView($record): bool
+    {
+        $user = auth()->user();
+
+        return $user instanceof User
+            && $record instanceof DnsProvider
+            && DnsAccessControl::canManageProvider($user, $record);
     }
     
     public static function canEdit($record): bool
     {
-        $user = auth()->user();
-        
-        if (!$user) return false;
-        
-        if ($user->isSystemAdmin()) return true;
-        
-        return false;
+        return static::canView($record);
     }
     
     public static function canDelete($record): bool
     {
         $user = auth()->user();
 
-        return $user && $user->isSystemAdmin();
-    }    
-
-  
+        return $user instanceof User
+            && $record instanceof DnsProvider
+            && DnsAccessControl::canDeleteProvider($user, $record);
+    }
 }

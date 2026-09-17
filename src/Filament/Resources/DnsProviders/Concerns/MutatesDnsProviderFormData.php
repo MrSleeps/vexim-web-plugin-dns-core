@@ -2,11 +2,13 @@
 
 namespace VEximweb\Plugin\DnsCore\Filament\Resources\DnsProviders\Concerns;
 
+use VEximweb\Core\Data\Models\User;
+
 trait MutatesDnsProviderFormData
 {
     protected function mutateData(array $data): array
     {
-        $topLevelFields = ['name', 'type','api_url', 'api_key', 'is_default', 'is_enabled', 'priority', 'settings'];
+        $topLevelFields = ['owner_user_id', 'name', 'type', 'api_url', 'api_key', 'is_default', 'is_enabled', 'priority', 'settings'];
 
         $settings = [];
 
@@ -33,7 +35,17 @@ trait MutatesDnsProviderFormData
         /** @phpstan-ignore empty.variable */
         $data['settings'] = !empty($settings) ? $settings : null;
 
-        $data['is_default'] = isset($data['is_default']) ? (int) $data['is_default'] : 0;
+        $user = auth()->user();
+        if ($user instanceof User && $user->isDomainAdmin() && ! $user->isSystemAdmin()) {
+            $data['owner_user_id'] = $user->getKey();
+        }
+
+        $data['owner_user_id'] = filled($data['owner_user_id'] ?? null)
+            ? (int) $data['owner_user_id']
+            : null;
+        $data['is_default'] = $data['owner_user_id'] === null
+            ? (int) ($data['is_default'] ?? 0)
+            : 0;
         $data['is_enabled'] = isset($data['is_enabled']) ? (int) $data['is_enabled'] : 1;
         $data['priority']   = isset($data['priority'])   ? (int) $data['priority']   : 0;
 

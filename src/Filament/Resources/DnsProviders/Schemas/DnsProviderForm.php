@@ -2,17 +2,18 @@
 
 namespace VEximweb\Plugin\DnsCore\Filament\Resources\DnsProviders\Schemas;
 
-use Filament\Schemas\Schema;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Actions\Action as FormAction;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
-use Filament\Forms\Components\Actions\Action as FormAction;
-use VEximweb\Plugin\DnsCore\Services\DnsProviderDiscoveryService;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Log;
+use VEximweb\Core\Data\Models\User;
+use VEximweb\Plugin\DnsCore\Services\DnsProviderDiscoveryService;
 
 class DnsProviderForm
 {
@@ -90,6 +91,19 @@ class DnsProviderForm
                                         return 'Select a provider type';
                                     })
                                     ->placeholder(count($providerOptions) === 0 ? 'No providers available' : 'Select a provider'),
+
+                                Select::make('owner_user_id')
+                                    ->label('Provider Scope / Owner')
+                                    ->options(fn () => User::role('domain_admin')
+                                        ->orderBy('name')
+                                        ->pluck('name', 'id')
+                                        ->all())
+                                    ->placeholder('Global (system managed)')
+                                    ->searchable()
+                                    ->live()
+                                    ->visible(fn () => auth()->user()?->isSystemAdmin() ?? false)
+                                    ->helperText('Leave blank for a global provider. Select a domain admin to make this provider private to them.')
+                                    ->columnSpanFull(),
                             ]),
                     ]),
 
@@ -185,13 +199,14 @@ class DnsProviderForm
                                 Toggle::make('is_default')
                                     ->label('Default Provider')
                                     ->default(false)
-                                    ->helperText('Use this as the default DNS provider')
+                                    ->disabled(fn ($get) => filled($get('owner_user_id')))
+                                    ->helperText(fn ($get) => filled($get('owner_user_id'))
+                                        ? 'Private providers cannot be the system default.'
+                                        : 'Use this as the default DNS provider')
                                     ->onColor('warning')
                                     ->offColor('gray'),
                             ]),
                     ]),
-
-
             ]);
     }
 }

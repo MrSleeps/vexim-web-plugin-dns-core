@@ -3,10 +3,13 @@
 namespace VEximweb\Plugin\DnsCore\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Crypt;
+use VEximweb\Core\Data\Models\User;
 
 /**
  * @property int $id
+ * @property int|null $owner_user_id
  * @property string $name
  * @property string $type
  * @property string|null $api_url
@@ -23,11 +26,12 @@ class DnsProvider extends Model
     
     
     protected $fillable = [
-        'name', 'type', 'api_url', 'api_key', 'settings',
+        'owner_user_id', 'name', 'type', 'api_url', 'api_key', 'settings',
         'is_default', 'is_enabled', 'priority'
     ];
     
     protected $casts = [
+        'owner_user_id' => 'integer',
         'settings' => 'array',
         'is_default' => 'boolean',
         'is_enabled' => 'boolean',
@@ -61,9 +65,19 @@ class DnsProvider extends Model
     }
     
     // Relationships
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'owner_user_id');
+    }
+
     public function domains()
     {
         return $this->hasMany(DnsDomain::class, 'provider_id');
+    }
+
+    public function isGlobal(): bool
+    {
+        return $this->owner_user_id === null;
     }
     
     // Scopes
