@@ -7,6 +7,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use VEximweb\Core\Data\Models\User;
 use VEximweb\Plugin\DnsCore\Services\DnsProviderDiscoveryService;
 
 class DnsProvidersTable
@@ -45,7 +46,11 @@ class DnsProvidersTable
                 TextColumn::make('owner.name')
                     ->label('Owner')
                     ->placeholder('System')
-                    ->visible(fn () => auth()->user()?->isSystemAdmin() ?? false),
+                    ->visible(function (): bool {
+                        $user = auth()->user();
+
+                        return $user instanceof User && $user->isSystemAdmin();
+                    }),
                 TextColumn::make('domains_count')
                     ->label('Domains')
                     ->counts('domains'),
