@@ -1,6 +1,5 @@
 <?php
 
-use LogicException;
 use VEximweb\Core\Data\Models\Domain;
 use VEximweb\Plugin\DnsCore\Events\DnsRecordRequired;
 use VEximweb\Plugin\DnsCore\Models\DnsDomain;
@@ -57,5 +56,5 @@ it('refuses to delete a shared parent zone through a child domain mapping', func
     $dnsDomain = mappedDnsDomain('mail.example.com', 'example.com');
 
     expect(fn () => $dnsDomain->deleteZone())
-        ->toThrow(LogicException::class, 'refusing to delete the shared zone');
+        ->toThrow(\LogicException::class, 'refusing to delete the shared zone');
 });
