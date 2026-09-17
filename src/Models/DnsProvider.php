@@ -94,7 +94,7 @@ class DnsProvider extends Model
 
     public function getClient(?DnsDomain $domain = null): DnsClient
     {
-        return app(\VEximweb\Plugin\DnsCore\DnsClientResolver::class)->make($this, $domain);
+        return app(DnsClientFactory::class)->make($this, $domain);
     }
 
     public function testConnection(): bool
