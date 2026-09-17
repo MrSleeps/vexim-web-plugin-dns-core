@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $zone_id
  * @property array|null $settings
  * @property bool $is_active
+ * @property string $service_control
+ * @property string $record_control
  * @property string|null $last_sync_at
  * @property-read DnsProvider $provider
  * @property-read Domain|null $ownerDomain
@@ -23,7 +25,7 @@ class DnsDomain extends Model
     
     protected $fillable = [
         'domain_id', 'provider_id', 'zone_id', 'settings',
-        'is_active', 'last_sync_at'
+        'is_active', 'service_control', 'record_control', 'last_sync_at'
     ];
     
     protected $casts = [
