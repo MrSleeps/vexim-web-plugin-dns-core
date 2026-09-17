@@ -75,12 +75,20 @@ class DnsDomain extends Model
         return $provider->getClient($this);
     }
 
+    public function authoritativeZoneName(): string
+    {
+        return rtrim((string) ($this->zone_id ?: $this->domain_name), '.');
+    }
+
+    public function usesSharedParentZone(): bool
+    {
+        return strtolower($this->authoritativeZoneName()) !== strtolower(rtrim($this->domain_name, '.'));
+    }
+
     public function zoneExists(): bool
     {
         try {
-            $client = $this->getClient();
-
-            return $client->zoneExists($this->zone_id ?? $this->domain_name);
+            return $this->getClient()->zoneExists($this->authoritativeZoneName());
         } catch (\Exception) {
             return false;
         }
@@ -88,11 +96,17 @@ class DnsDomain extends Model
 
     public function createZone(array $options = []): bool
     {
+        if ($this->usesSharedParentZone()) {
+            throw new LogicException(
+                "DNS domain {$this->domain_name} is managed inside shared parent zone {$this->authoritativeZoneName()}; refusing to create or replace that zone."
+            );
+        }
+
         $client = $this->getClient();
-        $zoneName = $this->zone_id ?? $this->domain_name;
+        $zoneName = rtrim($this->domain_name, '.');
 
         if ($client->createZone($zoneName, $options)) {
-            if (! $this->zone_id) {
+            if ($this->zone_id !== $zoneName) {
                 $this->update(['zone_id' => $zoneName]);
             }
 
@@ -104,18 +118,24 @@ class DnsDomain extends Model
 
     public function deleteZone(): bool
     {
-        return $this->getClient()->deleteZone($this->zone_id ?? $this->domain_name);
+        if ($this->usesSharedParentZone()) {
+            throw new LogicException(
+                "DNS domain {$this->domain_name} is managed inside shared parent zone {$this->authoritativeZoneName()}; refusing to delete the shared zone."
+            );
+        }
+
+        return $this->getClient()->deleteZone($this->authoritativeZoneName());
     }
 
     public function getRecords(): array
     {
-        return $this->getClient()->getRecords($this->zone_id ?? $this->domain_name);
+        return $this->getClient()->getRecords($this->authoritativeZoneName());
     }
 
     public function createRecord(string $name, string $type, string $content, int $ttl = 3600, ?int $priority = null): bool
     {
         return $this->getClient()->createRecord(
-            zone: $this->zone_id ?? $this->domain_name,
+            zone: $this->authoritativeZoneName(),
             name: $name,
             type: $type,
             content: $content,
@@ -126,6 +146,6 @@ class DnsDomain extends Model
 
     public function deleteRecord(string $recordId): bool
     {
-        return $this->getClient()->deleteRecord($this->zone_id ?? $this->domain_name, $recordId);
+        return $this->getClient()->deleteRecord($this->authoritativeZoneName(), $recordId);
     }
 }
